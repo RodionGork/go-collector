@@ -17,7 +17,7 @@ var divisor, remainder int
 var storage = map[int]int {}
 
 
-func RunServer() {
+func runServer() {
     
     initAndSetup()
     
@@ -25,13 +25,13 @@ func RunServer() {
 }
 
 func initAndSetup() {
-    divisor = ConfGetInt("divisor")
-    remainder = ConfGetInt("remainder")
+    divisor = confGetInt("divisor")
+    remainder = confGetInt("remainder")
 
     fmt.Println("Starting server, press Ctrl-C to exit...")
     setCtrlC()
 
-    conn, err := beanstalk.Dial("tcp", ConfGet("queueHost"))
+    conn, err := beanstalk.Dial("tcp", confGet("queueHost"))
     if err != nil {
         fmt.Println("Can't connect to message queue")
         os.Exit(1)
@@ -64,7 +64,7 @@ func checkValue(val int) bool {
 
 func storeValue(id uint64, val int) {
     fmt.Println("Storing", id, val)
-    storage[val] += 1
+    storage[val]++
 }
 
 func dumpValues() {

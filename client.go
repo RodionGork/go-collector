@@ -9,8 +9,8 @@ import (
     "github.com/beanstalkd/go-beanstalk"
 )
 
-func RunClient() {
-    conn, _ := beanstalk.Dial("tcp", ConfGet("queueHost"))
+func runClient() {
+    conn, _ := beanstalk.Dial("tcp", confGet("queueHost"))
     rand.Seed(time.Now().Unix())
     val := rand.Int()
     if len(os.Args) < 3 || os.Args[2] != "dump" {

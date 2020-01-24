@@ -7,15 +7,15 @@ import (
     "encoding/json"
 )
 
-var parsed map[string]interface{}
+var parsedConfig map[string]interface{}
 
 func main() {
     if len(os.Args) < 2 {
         fmt.Println("USAGE: go <server|client>")
     } else if os.Args[1] == "server" {
-        RunServer()
+        runServer()
     } else if os.Args[1] == "client" {
-        RunClient()
+        runClient()
     } else {
         fmt.Println("Unsupported execution mode:", os.Args[1])
     }
@@ -33,13 +33,27 @@ func init() {
         fmt.Println("Error: config.json parse failure!")
         os.Exit(11)
     }
-    parsed = jData.(map[string]interface{})
+    parsedConfig = jData.(map[string]interface{})
 }
 
-func ConfGet(key string) string {
-    return parsed[key].(string)
+func confGet(key string) string {
+    val, ok := parsedConfig[key]
+    if ok {
+        s, ok := val.(string)
+        if ok {
+            return s
+        }
+    }
+    return ""
 }
 
-func ConfGetInt(key string) int {
-    return int(parsed[key].(float64))
+func confGetInt(key string) int {
+    val, ok := parsedConfig[key]
+    if ok {
+        f, ok := val.(float64)
+        if ok {
+            return int(f)
+        }
+    }
+    return 0
 }
