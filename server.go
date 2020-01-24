@@ -12,7 +12,12 @@ import (
 
 var queueConn *beanstalk.Conn
 
-func main() {
+var divisor, remainder int
+
+var storage = map[int]int {}
+
+
+func RunServer() {
     
     initAndSetup()
     
@@ -20,10 +25,13 @@ func main() {
 }
 
 func initAndSetup() {
+    divisor = ConfGetInt("divisor")
+    remainder = ConfGetInt("remainder")
+
     fmt.Println("Starting server, press Ctrl-C to exit...")
     setCtrlC()
 
-    conn, err := beanstalk.Dial("tcp", "127.0.0.1:11300")
+    conn, err := beanstalk.Dial("tcp", ConfGet("queueHost"))
     if err != nil {
         fmt.Println("Can't connect to message queue")
         os.Exit(1)
@@ -51,14 +59,19 @@ func serveEndlessly() {
 }
 
 func checkValue(val int) bool {
-    return val % 7 == 3
+    return val % divisor == remainder
 }
 
 func storeValue(id uint64, val int) {
     fmt.Println("Storing", id, val)
+    storage[val] += 1
 }
 
 func dumpValues() {
+    fmt.Println("Dump:", len(storage), "values")
+    for k, v := range storage {
+        fmt.Println("D", k, v)
+    }
 }
 
 func setCtrlC() {

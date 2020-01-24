@@ -1,0 +1,5 @@
+{
+    "queueHost": "127.0.0.1:11300",
+    "divisor": 7,
+    "remainder": 1
+}

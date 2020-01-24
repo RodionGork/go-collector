@@ -4,14 +4,20 @@ import (
     "fmt"
     "time"
     "math/rand"
+    "os"
     "strconv"
     "github.com/beanstalkd/go-beanstalk"
 )
 
-func main() {
-    conn, _ := beanstalk.Dial("tcp", "127.0.0.1:11300")
+func RunClient() {
+    conn, _ := beanstalk.Dial("tcp", ConfGet("queueHost"))
     rand.Seed(time.Now().Unix())
     val := rand.Int()
-    conn.Put([]byte(strconv.Itoa(val)), 1, 0, 30 * time.Second)
-    fmt.Println("Sent value:", val)
+    if len(os.Args) < 3 || os.Args[2] != "dump" {
+        conn.Put([]byte(strconv.Itoa(val)), 1, 0, 30 * time.Second)
+        fmt.Println("Sent value:", val)
+    } else {
+        conn.Put([]byte("dump"), 1, 0, 30 * time.Second)
+        fmt.Println("Dump requested")
+    }
 }
