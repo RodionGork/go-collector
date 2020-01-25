@@ -1,16 +1,14 @@
 package main
 
 import (
+    "bytes"
     "fmt"
     "time"
     "os"
     "os/signal"
     "strconv"
     "syscall"
-    "github.com/beanstalkd/go-beanstalk"
 )
-
-var queueConn *beanstalk.Conn
 
 var divisor, remainder int
 
@@ -30,18 +28,11 @@ func initAndSetup() {
 
     fmt.Println("Starting server, press Ctrl-C to exit...")
     setCtrlC()
-
-    conn, err := beanstalk.Dial("tcp", confGet("queueHost"))
-    if err != nil {
-        fmt.Println("Can't connect to message queue")
-        os.Exit(1)
-    }
-    queueConn = conn
 }
 
 func serveEndlessly() {
     for true {
-        id, body, err := queueConn.Reserve(5 * time.Second)
+        id, body, err := collectingTubeSet.Reserve(5 * time.Second)
         if (err == nil) {
             sBody := string(body)
             val, err := strconv.Atoi(sBody)
@@ -68,10 +59,12 @@ func storeValue(id uint64, val int) {
 }
 
 func dumpValues() {
-    fmt.Println("Dump:", len(storage), "values")
+    var buf bytes.Buffer
     for k, v := range storage {
-        fmt.Println("D", k, v)
+        buf.WriteString(fmt.Sprintf("%d:%d\n", k, v))
     }
+    auxiliaryTube.Put(buf.Bytes(), 1, 0, 30 * time.Second)
+    fmt.Println("Dump sent:", len(storage), "values")
 }
 
 func setCtrlC() {

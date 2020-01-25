@@ -5,7 +5,14 @@ import (
     "os"
     "io/ioutil"
     "encoding/json"
+    "github.com/beanstalkd/go-beanstalk"
 )
+
+var queueConn *beanstalk.Conn
+var collectingTube *beanstalk.Tube
+var auxiliaryTube *beanstalk.Tube
+var collectingTubeSet *beanstalk.TubeSet
+var auxiliaryTubeSet *beanstalk.TubeSet
 
 var parsedConfig map[string]interface{}
 
@@ -18,10 +25,16 @@ func main() {
         runClient()
     } else {
         fmt.Println("Unsupported execution mode:", os.Args[1])
+        os.Exit(1)
     }
 }
 
 func init() {
+    initConfig()
+    initConnection()
+}
+
+func initConfig() {
     data, err := ioutil.ReadFile("config.json")
     if err != nil {
         fmt.Println("Error: config.json not found!")
@@ -34,6 +47,19 @@ func init() {
         os.Exit(11)
     }
     parsedConfig = jData.(map[string]interface{})
+}
+
+func initConnection() {
+    conn, err := beanstalk.Dial("tcp", confGet("queueHost"))
+    if err != nil {
+        fmt.Println("Can't connect to message queue")
+        os.Exit(12)
+    }
+    queueConn = conn
+    collectingTube = &beanstalk.Tube { Conn: conn, Name: "collector-tube-in" }
+    collectingTubeSet = beanstalk.NewTubeSet(conn, collectingTube.Name)
+    auxiliaryTube = &beanstalk.Tube { Conn: conn, Name: "collector-tube-out" }
+    auxiliaryTubeSet = beanstalk.NewTubeSet(conn, auxiliaryTube.Name)
 }
 
 func confGet(key string) string {
