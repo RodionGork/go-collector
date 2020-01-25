@@ -1,6 +1,7 @@
 package main
 
 import (
+    "flag"
     "fmt"
     "os"
     "io/ioutil"
@@ -31,7 +32,11 @@ func main() {
 
 func init() {
     initConfig()
-    initConnection()
+    if flag.Lookup("test.v") == nil {
+        initConnection()
+    } else {
+        fmt.Println("Skipping queue connection")
+    }
 }
 
 func initConfig() {

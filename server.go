@@ -12,6 +12,8 @@ import (
 
 var divisor, remainder int
 
+var valuesChan chan int
+
 var storage = map[int]int {}
 
 
@@ -28,6 +30,16 @@ func initAndSetup() {
 
     fmt.Println("Starting server, press Ctrl-C to exit...")
     setCtrlC()
+    
+    valuesChan = make(chan int)
+    go collector(valuesChan);
+}
+
+func collector(ch chan int) {
+    for val := range ch {
+        fmt.Println("Storing", val)
+        storage[val]++
+    }
 }
 
 func serveEndlessly() {
@@ -39,7 +51,7 @@ func serveEndlessly() {
             if err == nil {
                 fmt.Println("Received", id, val)
                 if checkValue(val) {
-                    storeValue(id, val)
+                    storeValue(val)
                 }
             } else if (sBody == "dump") {
                 dumpValues()
@@ -53,9 +65,8 @@ func checkValue(val int) bool {
     return val % divisor == remainder
 }
 
-func storeValue(id uint64, val int) {
-    fmt.Println("Storing", id, val)
-    storage[val]++
+func storeValue(val int) {
+    valuesChan <- val
 }
 
 func dumpValues() {
