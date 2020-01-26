@@ -1,0 +1,21 @@
+syntax = "proto3";
+package main;
+
+message Command {
+    enum Code {
+        PUT = 0;
+        DUMP = 1;
+        FETCH = 2;
+    }
+    
+    Code cmd = 1;
+    repeated int64 val = 2;
+}
+
+message Dump {
+    message ValAndCnt {
+        int64 val = 1;
+        int32 cnt = 2;
+    }
+    repeated ValAndCnt list = 1;
+}

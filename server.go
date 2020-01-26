@@ -1,13 +1,12 @@
 package main
 
 import (
-    "bytes"
     "fmt"
     "time"
     "os"
     "os/signal"
-    "strconv"
     "syscall"
+    "github.com/golang/protobuf/proto"
 )
 
 var divisor, remainder int
@@ -46,14 +45,16 @@ func serveEndlessly() {
     for true {
         id, body, err := collectingTubeSet.Reserve(5 * time.Second)
         if (err == nil) {
-            sBody := string(body)
-            val, err := strconv.Atoi(sBody)
-            if err == nil {
-                fmt.Println("Received", id, val)
+            // extract this to separate method with error suppression
+            var cmd = &Command {}
+            proto.Unmarshal(body, cmd)
+            if cmd.Cmd == Command_PUT {
+                val := int(cmd.Val[0])
+                fmt.Println("Received", id, cmd.Val)
                 if checkValue(val) {
                     storeValue(val)
                 }
-            } else if (sBody == "dump") {
+            } else if (cmd.Cmd == Command_DUMP) {
                 dumpValues()
             }
             queueConn.Delete(id)
@@ -70,11 +71,16 @@ func storeValue(val int) {
 }
 
 func dumpValues() {
-    var buf bytes.Buffer
+    var dump = &Dump { List: []*Dump_ValAndCnt {} }
     for k, v := range storage {
-        buf.WriteString(fmt.Sprintf("%d:%d\n", k, v))
+        valAndCnt := &Dump_ValAndCnt {
+            Val: int64(k),
+            Cnt: int32(v),
+        }
+        dump.List = append(dump.List, valAndCnt)
     }
-    auxiliaryTube.Put(buf.Bytes(), 1, 0, 30 * time.Second)
+    bin, _ := proto.Marshal(dump)
+    auxiliaryTube.Put(bin, 1, 0, 30 * time.Second)
     fmt.Println("Dump sent:", len(storage), "values")
 }
 
