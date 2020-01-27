@@ -6,6 +6,7 @@ import (
     "os"
     "os/signal"
     "syscall"
+    "github.com/beanstalkd/go-beanstalk"
     "github.com/golang/protobuf/proto"
 )
 
@@ -20,7 +21,8 @@ func runServer() {
     
     initAndSetup()
     
-    serveEndlessly()
+    go serveEndlessly(auxiliaryTubeSet, processAuxiliaryCommands)
+    serveEndlessly(collectingTubeSet, processIncomingValues)
 }
 
 func initAndSetup() {
@@ -41,24 +43,50 @@ func collector(ch chan int) {
     }
 }
 
-func serveEndlessly() {
+func serveEndlessly(tubeSet *beanstalk.TubeSet, processor func(id uint64, body []byte)) {
     for true {
-        id, body, err := collectingTubeSet.Reserve(5 * time.Second)
+        id, body, err := tubeSet.Reserve(0 * time.Second)
         if (err == nil) {
-            // extract this to separate method with error suppression
-            var cmd = &Command {}
-            proto.Unmarshal(body, cmd)
-            if cmd.Cmd == Command_PUT {
-                val := int(cmd.Val[0])
-                fmt.Println("Received", id, cmd.Val)
-                if checkValue(val) {
-                    storeValue(val)
-                }
-            } else if (cmd.Cmd == Command_DUMP) {
-                dumpValues()
-            }
-            queueConn.Delete(id)
+            processor(id, body)
         }
+    }
+}
+
+func processIncomingValues(id uint64, body []byte) {
+
+    defer func() { queueConn.Delete(id) } ()
+    defer processingErrorCheck(id);
+
+    var cmd = &Command {}
+    proto.Unmarshal(body, cmd)
+    if cmd.Cmd == Command_PUT {
+        val := int(cmd.Val[0])
+        fmt.Println("Received", id, cmd.Val)
+        if checkValue(val) {
+            storeValue(val)
+        }
+    } else {
+        panic("Unexpected command in incoming tube")
+    }
+}
+
+func processAuxiliaryCommands(id uint64, body []byte) {
+
+    defer func() { queueConn.Delete(id) } ()
+    defer processingErrorCheck(id);
+
+    var cmd = &Command {}
+    proto.Unmarshal(body, cmd)
+    if (cmd.Cmd == Command_DUMP) {
+        dumpValues()
+    } else {
+        panic("Unexpected command in auxiliary tube")
+    }
+}
+
+func processingErrorCheck(id uint64) {
+    if r := recover(); r != nil {
+        fmt.Println("ERROR:", id, r.(error).Error())
     }
 }
 
@@ -80,7 +108,7 @@ func dumpValues() {
         dump.List = append(dump.List, valAndCnt)
     }
     bin, _ := proto.Marshal(dump)
-    auxiliaryTube.Put(bin, 1, 0, 30 * time.Second)
+    responseTube.Put(bin, 1, 0, 30 * time.Second)
     fmt.Println("Dump sent:", len(storage), "values")
 }
 

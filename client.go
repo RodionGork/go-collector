@@ -38,9 +38,9 @@ func sendValue() {
 func requestDump() {
     data := &Command { Cmd: Command_DUMP }
     dataBin, _ := proto.Marshal(data)
-    collectingTube.Put(dataBin, 1, 0, 30 * time.Second)
+    auxiliaryTube.Put(dataBin, 1, 0, 30 * time.Second)
     fmt.Println("Dump requested")
-    id, body, err := auxiliaryTubeSet.Reserve(5 * time.Second)
+    id, body, err := responseTubeSet.Reserve(5 * time.Second)
     if err == nil {
         queueConn.Delete(id)
         data := &Dump {}

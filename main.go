@@ -12,8 +12,10 @@ import (
 var queueConn *beanstalk.Conn
 var collectingTube *beanstalk.Tube
 var auxiliaryTube *beanstalk.Tube
+var responseTube *beanstalk.Tube
 var collectingTubeSet *beanstalk.TubeSet
 var auxiliaryTubeSet *beanstalk.TubeSet
+var responseTubeSet *beanstalk.TubeSet
 
 var parsedConfig map[string]interface{}
 
@@ -61,10 +63,12 @@ func initConnection() {
         os.Exit(12)
     }
     queueConn = conn
-    collectingTube = &beanstalk.Tube { Conn: conn, Name: "collector-tube-in" }
+    collectingTube = &beanstalk.Tube { Conn: conn, Name: "collector-tube" }
     collectingTubeSet = beanstalk.NewTubeSet(conn, collectingTube.Name)
-    auxiliaryTube = &beanstalk.Tube { Conn: conn, Name: "collector-tube-out" }
+    auxiliaryTube = &beanstalk.Tube { Conn: conn, Name: "auxiliary-tube" }
     auxiliaryTubeSet = beanstalk.NewTubeSet(conn, auxiliaryTube.Name)
+    responseTube = &beanstalk.Tube { Conn: conn, Name: "response-tube" }
+    responseTubeSet = beanstalk.NewTubeSet(conn, responseTube.Name)
 }
 
 func confGet(key string) string {

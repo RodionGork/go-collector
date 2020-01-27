@@ -5,7 +5,7 @@ message Command {
     enum Code {
         PUT = 0;
         DUMP = 1;
-        FETCH = 2;
+        STATS = 2;
     }
     
     Code cmd = 1;
