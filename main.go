@@ -1,11 +1,11 @@
 package main
 
 import (
-    "fmt"
     "os"
     "io/ioutil"
     "encoding/json"
     "github.com/beanstalkd/go-beanstalk"
+    log "github.com/sirupsen/logrus"
 )
 
 var queueConn *beanstalk.Conn
@@ -20,36 +20,51 @@ var parsedConfig map[string]interface{}
 
 func main() {
     if len(os.Args) < 2 {
-        fmt.Println("USAGE: go <server|client>")
+        log.Error("USAGE: ./go-collector <server|client>")
+        os.Exit(1)
     } else if os.Args[1] == "server" {
         runServer()
     } else if os.Args[1] == "client" {
         runClient()
     } else {
-        fmt.Println("Unsupported execution mode:", os.Args[1])
-        os.Exit(1)
+        log.Error("Unsupported execution mode:", os.Args[1])
+        os.Exit(3)
     }
 }
 
 func init() {
+    initLogger()
     initConfig()
     if !isInTest() {
         initConnection()
     } else {
-        fmt.Println("Skipping queue connection")
+        log.Info("Skipping queue connection in test")
     }
+}
+
+func initLogger() {
+    levelMap := map[string]log.Level {
+        "debug": log.DebugLevel,
+        "info": log.InfoLevel,
+        "warn": log.WarnLevel,
+        "error": log.ErrorLevel,
+        "": log.InfoLevel,
+    }
+    level := levelMap[os.Getenv("LOG_LEVEL")]
+    log.SetOutput(os.Stdout)
+    log.SetLevel(level)
 }
 
 func initConfig() {
     data, err := ioutil.ReadFile("config.json")
     if err != nil {
-        fmt.Println("Error: config.json not found!")
+        log.Error("config.json not found")
         os.Exit(10)
     }
     var jData interface{}
     err2 := json.Unmarshal(data, &jData)
     if err2 != nil {
-        fmt.Println("Error: config.json parse failure!")
+        log.Error("config.json parse failure")
         os.Exit(11)
     }
     parsedConfig = jData.(map[string]interface{})
@@ -58,7 +73,7 @@ func initConfig() {
 func initConnection() {
     conn, err := beanstalk.Dial("tcp", confGet("queueHost"))
     if err != nil {
-        fmt.Println("Can't connect to message queue")
+        log.Error("Can't connect to message queue")
         os.Exit(12)
     }
     queueConn = conn

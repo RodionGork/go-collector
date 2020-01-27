@@ -1,13 +1,13 @@
 package main
 
 import (
-    "fmt"
     "time"
     "os"
     "os/signal"
     "syscall"
     "github.com/beanstalkd/go-beanstalk"
     "github.com/golang/protobuf/proto"
+    log "github.com/sirupsen/logrus"
 )
 
 var divisor, remainder int
@@ -29,7 +29,7 @@ func initAndSetup() {
     divisor = confGetInt("divisor")
     remainder = confGetInt("remainder")
 
-    fmt.Println("Starting server, press Ctrl-C to exit...")
+    log.Info("Starting server, use Ctrl-C to exit")
     setCtrlC()
     
     valuesChan = make(chan int)
@@ -38,7 +38,7 @@ func initAndSetup() {
 
 func collector(ch chan int) {
     for val := range ch {
-        fmt.Println("Storing", val)
+        log.Info("Storing", val) //todo: pass ID here
         storage[val]++
     }
 }
@@ -61,7 +61,7 @@ func processIncomingValues(id uint64, body []byte) {
     proto.Unmarshal(body, cmd)
     if cmd.Cmd == Command_PUT {
         val := int(cmd.Val[0])
-        fmt.Println("Received", id, cmd.Val)
+        log.Infof("Received, msgid=%d, value=%d", id, cmd.Val)
         if checkValue(val) {
             storeValue(val)
         }
@@ -86,7 +86,7 @@ func processAuxiliaryCommands(id uint64, body []byte) {
 
 func processingErrorCheck(id uint64) {
     if r := recover(); r != nil {
-        fmt.Println("ERROR:", id, r.(error).Error())
+        log.Warnf("Processing failed for id=%d with message: %s", id, r.(error).Error())
     }
 }
 
@@ -109,7 +109,7 @@ func dumpValues() {
     }
     bin, _ := proto.Marshal(dump)
     responseTube.Put(bin, 1, 0, 30 * time.Second)
-    fmt.Println("Dump sent:", len(storage), "values")
+    log.Infof("Dump sent: %d values", len(storage))
 }
 
 func setCtrlC() {
@@ -117,7 +117,7 @@ func setCtrlC() {
     signal.Notify(ch, os.Interrupt, syscall.SIGTERM)
     go func() {
         <- ch
-        fmt.Println("Ctrl-C caught, exiting")
+        log.Info("Ctrl-C caught, exiting")
         os.Exit(0)
     }()
 }
