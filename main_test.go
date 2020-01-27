@@ -1,6 +1,8 @@
 package main
 
-import "testing"
+import (
+    "testing"
+)
 
 func TestConfGet_Miss(t *testing.T) {
     if confGet("not a key") != "" {

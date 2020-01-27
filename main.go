@@ -1,7 +1,6 @@
 package main
 
 import (
-    "flag"
     "fmt"
     "os"
     "io/ioutil"
@@ -34,7 +33,7 @@ func main() {
 
 func init() {
     initConfig()
-    if flag.Lookup("test.v") == nil {
+    if !isInTest() {
         initConnection()
     } else {
         fmt.Println("Skipping queue connection")
@@ -91,4 +90,9 @@ func confGetInt(key string) int {
         }
     }
     return 0
+}
+
+func isInTest() bool {
+    var prgName = os.Args[0]
+    return prgName[len(prgName) - 5:] == ".test"
 }
