@@ -2,6 +2,7 @@ package main
 
 import (
     "os"
+    "time"
     "io/ioutil"
     "encoding/json"
     "github.com/beanstalkd/go-beanstalk"
@@ -109,6 +110,10 @@ func confGetInt(key string) int {
         }
     }
     return 0
+}
+
+func currentMillis() int {
+    return int(time.Now().Unix() / 1000000)
 }
 
 func isInTest() bool {

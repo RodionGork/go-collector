@@ -10,49 +10,68 @@ import (
     log "github.com/sirupsen/logrus"
 )
 
+type idAndVal struct {
+    id uint64
+    val int
+}
+
 var divisor, remainder int
+var receiveSpeedLimit int
 
-var valuesChan chan int
-
-var storage = map[int]int {}
-
+var valuesChan chan *idAndVal
 var metricsChan chan bool
 
+var storage = map[int]int {}
 var metricReceived, metricStored int64
 
 func runServer() {
     
     initAndSetup()
     
-    go serveEndlessly(auxiliaryTubeSet, processAuxiliaryCommands)
-    serveEndlessly(collectingTubeSet, processIncomingValues)
+    go serveEndlessly(auxiliaryTubeSet, 5, processAuxiliaryCommands)
+    serveEndlessly(collectingTubeSet, receiveSpeedLimit, processIncomingValues)
 }
 
 func initAndSetup() {
     divisor = confGetInt("divisor")
     remainder = confGetInt("remainder")
+    receiveSpeedLimit = confGetInt("receivePerSecondMax")
 
     log.Info("Starting server, use Ctrl-C to exit")
     setCtrlC()
     
-    valuesChan = make(chan int)
+    valuesChan = make(chan *idAndVal)
     go collector()
     metricsChan = make(chan bool)
     go metricProcessor()
 }
 
 func collector() {
-    for val := range valuesChan {
-        log.Infof("Storing %d", val) //todo: pass ID here
-        storage[val]++
+    for next := range valuesChan {
+        log.Infof("Storing %d (id=%d)", next.val, next.id) //todo: pass ID here
+        storage[next.val]++
     }
 }
 
-func serveEndlessly(tubeSet *beanstalk.TubeSet, processor func(id uint64, body []byte)) {
+func serveEndlessly(tubeSet *beanstalk.TubeSet, maxSpeed int, processor func(id uint64, body []byte)) {
+    ts := currentMillis()
+    cnt := 0
     for true {
         id, body, err := tubeSet.Reserve(0 * time.Second)
         if (err == nil) {
             processor(id, body)
+        }
+        cnt++
+        if cnt >= maxSpeed {
+            ts2 := currentMillis()
+            delta := ts2 - ts
+            if delta < 1000 {
+                dur := time.Duration(1000 - delta) * time.Millisecond
+                time.Sleep(dur)
+                log.Tracef("Sleeping for %d ms", dur)
+                ts = ts2
+            }
+            cnt = 0
         }
     }
 }
@@ -69,7 +88,8 @@ func processIncomingValues(id uint64, body []byte) {
         log.Debugf("Received, msgid=%d, value=%d", id, cmd.Val)
         acceptable := checkValue(val)
         if acceptable {
-            valuesChan <- val
+            data := &idAndVal { id: id, val: val }
+            valuesChan <- data
         }
         metricsChan <- acceptable
     } else {

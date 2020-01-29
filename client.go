@@ -10,7 +10,10 @@ import (
     log "github.com/sirupsen/logrus"
 )
 
+var maxRandom int
+
 func runClient() {
+    maxRandom = confGetInt("maxClientRandom")
     if len(os.Args) > 2 {
         cmd := os.Args[2]
         if cmd == "dump" {
@@ -28,7 +31,7 @@ func runClient() {
 }
 
 func init() {
-    rand.Seed(time.Now().Unix())
+    rand.Seed(time.Now().UnixNano())
 }
 
 func printHelp() {
@@ -39,6 +42,9 @@ func printHelp() {
 
 func sendValue() {
     val := rand.Int()
+    if maxRandom > 0 {
+        val %= maxRandom
+    }
     if len(os.Args) > 3 {
         v, e := strconv.Atoi(os.Args[3])
         if e == nil {

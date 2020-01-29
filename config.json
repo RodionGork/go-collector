@@ -1,5 +1,8 @@
 {
     "queueHost": "127.0.0.1:11300",
+    "receivePerSecondMax": 500,
+    "sendPerSecondMax": 20,
+    "maxClientRandom": 100000,
     "divisor": 7,
     "remainder": 1
 }
