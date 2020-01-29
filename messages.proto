@@ -19,3 +19,8 @@ message Dump {
     }
     repeated ValAndCnt list = 1;
 }
+
+message Stats {
+    int64 received = 1;
+    int64 stored = 2;
+}

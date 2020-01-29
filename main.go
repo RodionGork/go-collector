@@ -50,9 +50,13 @@ func initLogger() {
         "error": log.ErrorLevel,
         "": log.InfoLevel,
     }
-    level := levelMap[os.Getenv("LOG_LEVEL")]
+    envVal := os.Getenv("LOG_LEVEL")
+    level := levelMap[envVal]
     log.SetOutput(os.Stdout)
     log.SetLevel(level)
+    if envVal == "" {
+        log.Infof("Default LOG_LEVEL is 'info'")
+    }
 }
 
 func initConfig() {

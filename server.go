@@ -16,6 +16,9 @@ var valuesChan chan int
 
 var storage = map[int]int {}
 
+var metricsChan chan bool
+
+var metricReceived, metricStored int64
 
 func runServer() {
     
@@ -33,12 +36,14 @@ func initAndSetup() {
     setCtrlC()
     
     valuesChan = make(chan int)
-    go collector(valuesChan);
+    go collector()
+    metricsChan = make(chan bool)
+    go metricProcessor()
 }
 
-func collector(ch chan int) {
-    for val := range ch {
-        log.Info("Storing", val) //todo: pass ID here
+func collector() {
+    for val := range valuesChan {
+        log.Infof("Storing %d", val) //todo: pass ID here
         storage[val]++
     }
 }
@@ -61,10 +66,12 @@ func processIncomingValues(id uint64, body []byte) {
     proto.Unmarshal(body, cmd)
     if cmd.Cmd == Command_PUT {
         val := int(cmd.Val[0])
-        log.Infof("Received, msgid=%d, value=%d", id, cmd.Val)
-        if checkValue(val) {
-            storeValue(val)
+        log.Debugf("Received, msgid=%d, value=%d", id, cmd.Val)
+        acceptable := checkValue(val)
+        if acceptable {
+            valuesChan <- val
         }
+        metricsChan <- acceptable
     } else {
         panic("Unexpected command in incoming tube")
     }
@@ -77,8 +84,10 @@ func processAuxiliaryCommands(id uint64, body []byte) {
 
     var cmd = &Command {}
     proto.Unmarshal(body, cmd)
-    if (cmd.Cmd == Command_DUMP) {
+    if cmd.Cmd == Command_DUMP {
         dumpValues()
+    } else if cmd.Cmd == Command_STATS {
+        sendMetrics()
     } else {
         panic("Unexpected command in auxiliary tube")
     }
@@ -94,10 +103,6 @@ func checkValue(val int) bool {
     return val % divisor == remainder
 }
 
-func storeValue(val int) {
-    valuesChan <- val
-}
-
 func dumpValues() {
     var dump = &Dump { List: []*Dump_ValAndCnt {} }
     for k, v := range storage {
@@ -110,6 +115,25 @@ func dumpValues() {
     bin, _ := proto.Marshal(dump)
     responseTube.Put(bin, 1, 0, 30 * time.Second)
     log.Infof("Dump sent: %d values", len(storage))
+}
+
+func sendMetrics() {
+    var stats = &Stats {
+        Received: metricReceived,
+        Stored: metricStored,
+    }
+    bin, _ := proto.Marshal(stats)
+    responseTube.Put(bin, 1, 0, 30 * time.Second)
+    log.Infof("Metrics sent: %d received, %d stored", metricReceived, metricStored)
+}
+
+func metricProcessor() {
+    for stored := range metricsChan {
+        metricReceived++
+        if stored {
+            metricStored++
+        }
+    }
 }
 
 func setCtrlC() {
