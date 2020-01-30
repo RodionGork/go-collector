@@ -1,10 +1,12 @@
 package main
 
 import (
+    "fmt"
     "os"
     "time"
     "io/ioutil"
     "encoding/json"
+    "strconv"
     "github.com/beanstalkd/go-beanstalk"
     log "github.com/sirupsen/logrus"
 )
@@ -92,22 +94,28 @@ func initConnection() {
     responseTubeSet = beanstalk.NewTubeSet(conn, responseTube.Name)
 }
 
-func confGet(key string) string {
-    val, ok := parsedConfig[key]
+func fetchConfOrEnv(key string) (string, bool) {
+    valEnv, ok := os.LookupEnv(key)
     if ok {
-        s, ok := val.(string)
-        if ok {
-            return s
-        }
+        return valEnv, true
     }
-    return ""
+    valCfg, ok := parsedConfig[key]
+    if !ok {
+        return "", false
+    }
+    return fmt.Sprintf("%v", valCfg), ok
+}
+
+func confGet(key string) string {
+    val, _ := fetchConfOrEnv(key)
+    return val
 }
 
 func confGetInt(key string) int {
-    val, ok := parsedConfig[key]
+    val, ok := fetchConfOrEnv(key)
     if ok {
-        f, ok := val.(float64)
-        if ok {
+        f, err := strconv.ParseFloat(val, 32)
+        if err == nil  {
             return int(f)
         }
     }
