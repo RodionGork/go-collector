@@ -30,7 +30,7 @@ func main() {
     } else if os.Args[1] == "client" {
         runClient()
     } else if os.Args[1] == "http-client" {
-        runHttpClient()
+        runWebClient()
     } else {
         log.Error("Unsupported execution mode:", os.Args[1])
         os.Exit(3)

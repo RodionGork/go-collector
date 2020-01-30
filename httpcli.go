@@ -12,7 +12,7 @@ import (
 var sentCount = 0
 var sendRate int
 
-func runHttpClient() {
+func runWebClient() {
     go spamEndlessly()
     runWebInterface()
 }
