@@ -40,6 +40,8 @@ func main() {
 func init() {
     initLogger()
     initConfig()
+    // it's ugly, but let it remain as a reminder that
+    // resources shouldn't be initialized with "init" :)
     if !isInTest() {
         initConnection()
     } else {
@@ -132,6 +134,9 @@ func isInTest() bool {
 }
 
 func rateLimiter(maxPerSec *int, f func()) {
+    // passing pointer here is a hasty hack to allow
+    // changing throughput in runtime
+    // (we'd better have RateLimiter struct with couple methods instead)
     ts := currentMillis()
     count := 0
     for true {
