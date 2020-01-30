@@ -10,18 +10,17 @@ import (
     log "github.com/sirupsen/logrus"
 )
 
-var maxRandom int
+var maxRandom = -1
 
 func runClient() {
-    maxRandom = confGetInt("maxClientRandom")
     if len(os.Args) > 2 {
         cmd := os.Args[2]
         if cmd == "dump" {
             requestDump()
         } else if cmd == "stats" {
-            requestStats()
+            showServerStats()
         } else if cmd == "send" {
-            sendValue()
+            sendValue(parseArgOrRandom())
         } else {
             log.Errorf("Unrecognized operation: %s", cmd)
         }
@@ -30,21 +29,24 @@ func runClient() {
     }
 }
 
-func init() {
-    rand.Seed(time.Now().UnixNano())
-}
-
 func printHelp() {
     fmt.Println("Usage:")
     fmt.Println("    ./go-collector client <stats|dump>")
     fmt.Println("    ./go-collector client send [value]")
 }
 
-func sendValue() {
-    val := rand.Int()
-    if maxRandom > 0 {
-        val %= maxRandom
+func sendValue(val int) {
+    data := &Command {
+        Cmd: Command_PUT,
+        Val: []int64 {int64(val)},
     }
+    dataBin, _ := proto.Marshal(data)
+    collectingTube.Put(dataBin, 1, 0, 30 * time.Second)
+    log.Debugf("Sent value: %d", val)
+}
+
+func parseArgOrRandom() int {
+    val := generateRandomToSend()
     if len(os.Args) > 3 {
         v, e := strconv.Atoi(os.Args[3])
         if e == nil {
@@ -53,13 +55,19 @@ func sendValue() {
             log.Warnf("can't parse value to send, sending random instead")
         }
     }
-    data := &Command {
-        Cmd: Command_PUT,
-        Val: []int64 {int64(val)},
+    return val
+}
+
+func generateRandomToSend() int {
+    if maxRandom < 0 {
+        rand.Seed(time.Now().UnixNano())
+        maxRandom = confGetInt("maxClientRandom")
     }
-    dataBin, _ := proto.Marshal(data)
-    collectingTube.Put(dataBin, 1, 0, 30 * time.Second)
-    log.Infof("Sent value: %d", val)
+    val := rand.Int()
+    if maxRandom > 0 {
+        val %= maxRandom
+    }
+    return val
 }
 
 func cleanAuxiliaryTube() {
@@ -99,11 +107,21 @@ func requestDump() {
     }
 }
 
-func requestStats() {
-    body, err := auxiliaryRequest(Command_STATS, "Stats requested")
+func showServerStats() {
+    rec, sto, err := requestServerStats()
     if err == nil {
-        data := &Stats {}
-        proto.Unmarshal(body, data)
-        fmt.Printf("Server stats: received=%d, stored=%d\n", data.Received, data.Stored)
+        fmt.Printf("Server stats: received=%d, stored=%d\n", rec, sto)
+    } else {
+        log.Errorf("can't fetch stats: %s", err)
     }
+}
+
+func requestServerStats() (int64, int64, error) {
+    body, err := auxiliaryRequest(Command_STATS, "Stats requested")
+    if err != nil {
+        return 0, 0, err
+    }
+    data := &Stats {}
+    proto.Unmarshal(body, data)
+    return data.Received, data.Stored, nil
 }

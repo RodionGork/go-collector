@@ -54,26 +54,12 @@ func collector() {
 }
 
 func serveEndlessly(tubeSet *beanstalk.TubeSet, maxSpeed int, processor func(id uint64, body []byte)) {
-    ts := currentMillis()
-    cnt := 0
-    for true {
+    rateLimiter(&maxSpeed, func() {
         id, body, err := tubeSet.Reserve(0 * time.Second)
         if (err == nil) {
             processor(id, body)
         }
-        cnt++
-        if cnt >= maxSpeed {
-            ts2 := currentMillis()
-            delta := ts2 - ts
-            if delta < 1000 {
-                dur := time.Duration(1000 - delta) * time.Millisecond
-                time.Sleep(dur)
-                log.Tracef("Sleeping for %d ms", dur)
-                ts = ts2
-            }
-            cnt = 0
-        }
-    }
+    })
 }
 
 func processIncomingValues(id uint64, body []byte) {

@@ -1,5 +1,6 @@
 {
     "queueHost": "127.0.0.1:11300",
+    "httpClientPort": 8080,
     "receivePerSecondMax": 500,
     "sendPerSecondMax": 20,
     "maxClientRandom": 100000,

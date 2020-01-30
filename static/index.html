@@ -1,0 +1,76 @@
+<!doctype html>
+<html>
+<head>
+  <title>Go-Collector Auto Sender</title>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <link href="./bs.css" rel="stylesheet"/>
+  <style>
+    input {
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="container text-center">
+    <div class="row" id="row-add-record">
+      <div class="col-md-12"><h3>Go-Collector<br/>Http-Client or "Auto-Sender"</h3></div>
+      <br/><br/>
+      <form class="col-md-12">
+        <div class="form-group">
+          Sent values
+          <input id="input-sent" type="text" disabled="1" class="form-control" placeholder="0"/>
+        </div>
+        <div class="form-group">
+          Change speed (per second)
+          <input id="input-speed" type="text" class="form-control"/>
+        </div>
+        <button class="btn btn-outline-primary" type="button" onclick="changeSpeed()">Change</button>
+        <br/><br/>
+        <hr/>
+        <strong>Server-side Metrics</strong><br/>
+        <button class="btn btn-outline-danger" type="button" onclick="updateServerStats()">Request</button>
+        <br/><br/>
+        Received:
+        <div class="form-group">
+          <input id="input-received" type="text" disabled="1" class="form-control" placeholder="0"/>
+        </div>
+        Stored:
+        <div class="form-group">
+          <input id="input-stored" type="text" disabled="1" class="form-control" placeholder="0"/>
+        </div>
+      </form>
+    </div>
+  </div>
+<script src="./jq.js"></script>
+<script src="./bs.js"></script>
+
+<script>
+function changeSpeed() {
+    var v = $('#input-speed').val()
+    $.get('./client-speed/' + v, function(data) {
+        $('#input-speed').val(data);
+    });
+}
+
+function updateClientStats() {
+    $.get('./client-stats', function(data) {
+        $('#input-sent').val(data);
+    });
+}
+
+function updateServerStats() {
+    $.get('./server-stats', function(data) {
+        data = data.split(' ');
+        $('#input-received').val(data[0]);
+        $('#input-stored').val(data[1]);
+    });
+}
+
+setInterval(updateClientStats, 700);
+changeSpeed();
+
+</script>
+
+</body>
+</html>

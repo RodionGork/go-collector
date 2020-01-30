@@ -27,6 +27,8 @@ func main() {
         runServer()
     } else if os.Args[1] == "client" {
         runClient()
+    } else if os.Args[1] == "http-client" {
+        runHttpClient()
     } else {
         log.Error("Unsupported execution mode:", os.Args[1])
         os.Exit(3)
@@ -119,4 +121,24 @@ func currentMillis() int {
 func isInTest() bool {
     var prgName = os.Args[0]
     return prgName[len(prgName) - 5:] == ".test"
+}
+
+func rateLimiter(maxPerSec *int, f func()) {
+    ts := currentMillis()
+    count := 0
+    for true {
+        f()
+        count++
+        if count >= *maxPerSec {
+            ts2 := currentMillis()
+            delta := ts2 - ts
+            if delta < 1000 {
+                dur := time.Duration(1000 - delta) * time.Millisecond
+                time.Sleep(dur)
+                log.Tracef("Sleeping for %d ms", dur)
+                ts = ts2
+            }
+            count = 0
+        }
+    }
 }
